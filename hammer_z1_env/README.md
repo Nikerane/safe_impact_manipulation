@@ -58,7 +58,7 @@ unitree_rl_mjlab/src/
     rl/runner.py            HammerOnPolicyRunner
 ```
 
-Quick test:
+Quick sanity test (no training):
 
 ```bash
 conda activate unitree_mjlab
@@ -77,6 +77,93 @@ obs, reward, done, trunc, info = env.step(torch.zeros(1, 3))
 print('reward:', reward)
 env.close()
 "
+```
+
+---
+
+## Training
+
+The task is registered as `Unitree-Z1-Hammer` in mjlab's task registry
+(via `src/tasks/hammer/config/z1/__init__.py`).
+
+### List all registered tasks
+
+```bash
+cd ~/repos/unitree_rl_mjlab
+conda activate unitree_mjlab
+python scripts/list_envs.py
+```
+
+### Train from scratch
+
+```bash
+cd ~/repos/unitree_rl_mjlab
+conda activate unitree_mjlab
+
+# Single GPU (default: GPU 0)
+python scripts/train.py Unitree-Z1-Hammer
+
+# Specific GPU
+python scripts/train.py Unitree-Z1-Hammer --gpu-ids 1
+
+# CPU only (slow — for debugging without a GPU)
+python scripts/train.py Unitree-Z1-Hammer --gpu-ids '[]'
+
+# More parallel envs (faster wall-clock, more VRAM)
+python scripts/train.py Unitree-Z1-Hammer --env.scene.num-envs 2048
+```
+
+Logs and checkpoints are saved to:
+```
+logs/rsl_rl/z1_hammer/<YYYY-MM-DD_HH-MM-SS>/
+  params/
+    env.yaml          env config snapshot
+    agent.yaml        PPO config snapshot
+  model_<iter>.pt     checkpoint every 100 iterations (save_interval)
+  model_<iter>.onnx   ONNX export (saved by HammerOnPolicyRunner)
+```
+
+### Resume from a checkpoint
+
+```bash
+python scripts/train.py Unitree-Z1-Hammer \
+  --agent.load-run 2026-05-08_17-00-00 \
+  --agent.load-checkpoint model_1000.pt
+```
+
+`load-run` is the timestamp folder name under `logs/rsl_rl/z1_hammer/`.
+`load-checkpoint` defaults to the latest `.pt` file if omitted.
+
+### Play / visualise a trained policy
+
+```bash
+# Auto-selects native viewer if a display is present, viser (browser) otherwise
+python scripts/play.py Unitree-Z1-Hammer \
+  --checkpoint-file logs/rsl_rl/z1_hammer/2026-05-08_17-00-00/model_5000.pt
+
+# Force the MuJoCo native viewer (requires $DISPLAY)
+python scripts/play.py Unitree-Z1-Hammer \
+  --checkpoint-file <path> --viewer native
+
+# Force viser (browser-based, works headless / over SSH)
+python scripts/play.py Unitree-Z1-Hammer \
+  --checkpoint-file <path> --viewer viser
+
+# Run more envs side-by-side during play
+python scripts/play.py Unitree-Z1-Hammer \
+  --checkpoint-file <path> --num-envs 4
+```
+
+### Run the test suite
+
+```bash
+cd ~/repos/unitree_rl_mjlab
+
+# Fast (XML + config + MjSpec, no Warp, ~7 s)
+conda run -n unitree_mjlab python -m pytest tests/ -v -m "not integration"
+
+# Full suite including physics step (~16 s, compiles Warp kernels once)
+conda run -n unitree_mjlab python -m pytest tests/ -v
 ```
 
 ---
