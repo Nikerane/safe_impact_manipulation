@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+
+# Virtual environments / package managers
+.venv/
+venv/
+env/
+.uv/
+.uv-cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# MuJoCo / simulation artifacts
+*.mjb
+*.mjcf.bak
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and output
+*.log
+*.out
+runs/
+logs/
+outputs/
+
+# Training checkpoints / model weights
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.pkl

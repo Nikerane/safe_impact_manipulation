@@ -1,0 +1,55 @@
+<mujoco model="z1 hammer nail scene">
+  <compiler angle="radian" meshdir="meshes/" autolimits="true"/>
+
+  <option integrator="Euler" noslip_iterations="3" timestep="0.002" cone="pyramidal">
+    <flag multiccd="enable" warmstart="enable"/>
+  </option>
+
+  <include file="z1_mocap_hammer.xml"/>
+
+  <statistic center="0.3 0 0.4" extent="1"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="120" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge"
+             rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+    <camera name="watching" pos="1.669 -1.154 1.019" xyaxes="0.644 0.765 0.000 -0.250 0.210 0.945"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+
+    <!-- Wooden block (fixed) -->
+    <body name="block" pos="0.50 0 0.40">
+      <geom name="block_geom"
+            type="box"
+            size="0.125 0.09 0.03"
+            rgba="0.65 0.22 0.08 1"
+            friction="1.5 0.01 0.001"/>
+    </body>
+
+    <!-- Nail — slides downward into block -->
+    <body name="nail" pos="0.50 0 0.46">
+      <joint name="nail_slide"
+             type="slide"
+             axis="0 0 -1"
+             range="0 0.075"
+             damping="8"
+             frictionloss="0.3"/>
+      <geom name="nail_shaft" type="cylinder" pos="0 0 -0.035" size="0.003 0.04"
+            mass="0.005" rgba="0.55 0.55 0.55 1"/>
+      <geom name="nail_head"  type="cylinder" pos="0 0 0.006"  size="0.012 0.004"
+            mass="0.002" rgba="0.45 0.45 0.45 1"/>
+      <site name="nail_top" pos="0 0 0.012" size="0.008" rgba="1 0 0 1"/>
+    </body>
+
+  </worldbody>
+</mujoco>
