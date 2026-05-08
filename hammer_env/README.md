@@ -86,6 +86,62 @@ obs, info = env.reset()
 obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
 ```
 
+## Nail & block physics: how the nail gets driven in
+
+### Scene geometry
+
+```
+block  fixed body, no joint — it never moves
+nail   slide joint along -Z, range 0–7.5 cm (0 = flush with block surface, 7.5 cm = fully driven)
+```
+
+The nail starts with its tip at the block surface. Each hammer blow transfers an impulse to the nail head; the slide joint converts that into downward motion. The nail is fully passive — it has no actuator, it moves only when contact forces from the hammer exceed the resistance in the joint.
+
+### `friction` vs `frictionloss` — what they are and why both exist
+
+| Parameter | Where it lives | What it models |
+|-----------|---------------|----------------|
+| `friction="1.5 0.01 0.001"` | `<geom>` on the block | Contact friction between surfaces (block ↔ hammer, block ↔ nail shaft) |
+| `frictionloss="0.3"` | `<joint>` on the nail slide | Dry Coulomb friction inside the joint DOF itself (wood gripping the nail) |
+
+They live at different layers of MuJoCo's physics:
+
+- **`friction` is a contact property.** When two geoms touch, MuJoCo pairs their friction values (usually taking the geometric mean) to compute tangential contact forces. The three numbers are `[slide, torsional, rolling]`. The block's `slide=1.5` is deliberately high — it means the wood surface strongly resists any object slipping sideways across it. This stops the hammer head from skating off the block on impact and gives the nail shaft realistic grip from the wood walls as it penetrates.
+
+- **`frictionloss` is a joint property.** It is a constant Coulomb (dry-friction) force that always opposes motion along the joint axis, regardless of contact. Think of it as the wood fibers clamping onto the nail shaft: until the net axial force exceeds `frictionloss`, the nail does not move at all. Once it does move, this force continues to resist, so small taps don't drive the nail far.
+
+### How a single hammer blow plays out
+
+```
+1. Hammer head contacts nail_head geom
+        │
+        ▼ contact impulse along -Z
+2. MuJoCo noslip solver resolves the impulse
+        │
+        ▼ net force on nail body projected onto joint axis
+3. frictionloss (0.3 N) checked — nail moves only if force exceeds threshold
+        │
+        ▼ nail accelerates downward along slide joint
+4. damping (8 N·s/m) bleeds velocity — nail decelerates and stops
+        │
+        ▼ nail position increments; frictionloss holds it at new depth
+5. Next blow repeats from new resting depth
+```
+
+### Why these specific values
+
+| Value | Reasoning |
+|-------|-----------|
+| `block friction slide = 1.5` | Wood-on-metal contact; higher than typical (≈0.5–0.8) to prevent the hammer skating sideways on impact |
+| `frictionloss = 0.3` | Represents wood grain resistance clamping the nail; large enough that gravity alone (nail mass ≈ 7 g, ~0.07 N) cannot drive the nail, but one firm hammer blow can |
+| `damping = 8` | Viscous drag that prevents the nail from oscillating or bouncing after impact, mimicking the energy absorbed by wood fibers |
+
+### What "nail driven in" looks like in the joint
+
+The nail's `qpos` value for `nail_slide` goes from `0` (flush) toward `0.075` (7.5 cm deep). The task is complete when this value reaches the target depth, which maps directly to the `achieved_goal` / `desired_goal` positions in the gym env.
+
+---
+
 ## End-effector control: mocap + weld
 
 This env uses the same EE control design as `panda_mujoco_gym`.
