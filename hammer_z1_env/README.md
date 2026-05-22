@@ -2,7 +2,17 @@
 
 Unitree Z1 arm with a rigidly-attached hammer. Task: use RL to drive a nail into a wooden block.
 
-This is the **Z1 variant** of `hammer_env` (Franka Panda). The robot assets live here; the mjlab task environment lives in `unitree_rl_mjlab/src/tasks/hammer/`.
+This is the **Z1 variant** of `hammer_env` (Franka Panda). Assets live here; mjlab training is in
+[`unitree_rl_mjlab`](https://github.com/Nikerane/unitree_rl_mjlab) (`hammer-z1` branch), task
+**`Unitree-Z1-Hammer`**. Docs: `unitree_rl_mjlab/docs/BASELINE_AUDIT.md`,
+`docs/research/reward-design/`.
+
+```bash
+cd ~/repos/unitree_rl_mjlab
+export MUJOCO_GL=egl
+python scripts/train.py Unitree-Z1-Hammer --agent.logger tensorboard --env.scene.num-envs 64
+pytest tests/ -m "not integration"
+```
 
 ---
 
