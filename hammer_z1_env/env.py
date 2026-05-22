@@ -96,6 +96,16 @@ class Z1HammerEnv(MujocoRobotEnv):
         self.set_mocap_pose(self.initial_mocap_position, self.grasp_site_pose)
 
         self.goal = self._compute_goal()
+        self._reset_reward_state()
+
+    def _reset_reward_state(self) -> None:
+        head_pos = self._utils.get_site_xpos(self.model, self.data, self.head_site).copy()
+        nail_pos = self._utils.get_site_xpos(self.model, self.data, self.nail_site).copy()
+        self._best_head_to_nail_dist = float(np.linalg.norm(head_pos - nail_pos))
+        self._max_nail_depth = 0.0
+        self._prev_action = np.zeros(3)
+        self._action_rate_sq = 0.0
+        self._nail_was_moving = False
 
     def _reset_sim(self) -> bool:
         self.data.time = self.initial_time
@@ -111,6 +121,7 @@ class Z1HammerEnv(MujocoRobotEnv):
         self._mujoco.mj_forward(self.model, self.data)
         self.goal = self._compute_goal()
         self._mujoco.mj_forward(self.model, self.data)
+        self._reset_reward_state()
         return True
 
     def _mujoco_step(self, action: Optional[np.ndarray] = None) -> None:
@@ -120,6 +131,8 @@ class Z1HammerEnv(MujocoRobotEnv):
     def _set_action(self, action: np.ndarray) -> None:
         action = action.copy()
         pos_ctrl = np.clip(action, self.action_space.low, self.action_space.high)
+        self._action_rate_sq = float(np.sum((pos_ctrl - self._prev_action) ** 2))
+        self._prev_action = pos_ctrl.copy()
         pos_ctrl *= self.action_scale
 
         # Tool-space control: action is Δ(hammer head). Convert to Δ(EE) before mocap.
@@ -134,10 +147,78 @@ class Z1HammerEnv(MujocoRobotEnv):
         self.set_mocap_pose(desired_ee_pos, self.grasp_site_pose)
 
     def compute_reward(self, achieved_goal, desired_goal, info) -> SupportsFloat:
+        # achieved_goal = nail_top world position (3D); desired_goal = fully-driven target (3D)
         d = self.goal_distance(achieved_goal, desired_goal)
         if self.reward_type == "sparse":
             return -(d > self.distance_threshold).astype(np.float32)
-        return -d
+
+        if self.reward_type == "dense":
+            # Plain distance reward — gives a signal but no approach guidance.
+            return -d
+
+        # reward_type == "progress" (recommended)
+        #
+        # Components:
+        #   1. approach_rew     — reward getting hammer head closer to nail (Phase 1),
+        #                         softly faded out as nail depth increases (exp decay)
+        #   2. depth_rew        — reward driving the nail deeper (Phase 2)
+        #   3. impact_bonus     — one-time bonus at moment of first contact, scaled by
+        #                         impact speed (teaches the policy to swing, not press)
+        #   4. done_bonus       — large one-time bonus on completion
+        #   5. joint_vel_penalty  — suppresses fast joint motion (sim-to-real)
+        #   6. action_rate_penalty — suppresses jerky action changes (sim-to-real)
+
+        nail_depth = float(self._utils.get_joint_qpos(self.model, self.data, "nail_slide"))
+        head_pos = self._utils.get_site_xpos(self.model, self.data, self.head_site).copy()
+        nail_pos = achieved_goal  # 3D world position of nail_top
+
+        # --- Phase 1: approach ---
+        head_to_nail = float(np.linalg.norm(head_pos - nail_pos))
+        approach_delta = max(0.0, self._best_head_to_nail_dist - head_to_nail)
+        self._best_head_to_nail_dist = min(self._best_head_to_nail_dist, head_to_nail)
+
+        # Exponential decay: approach reward fades smoothly as nail is driven deeper.
+        # At 0mm depth: weight=1.0. At 5mm: ~0.37. At 15mm: ~0.05.
+        # Avoids the cliff discontinuity of a hard gate while still shifting focus
+        # to depth once contact is established. (k=200 tuned for 75mm nail travel.)
+        #
+        # TODO (SDF reward): replace this Euclidean point-to-point distance with a
+        # Signed Distance Field reward — SDF_nail(hammer_head_pos) — which stays smooth
+        # through the contact boundary and handles approach angle properly.
+        # See: Tang et al., "IndustReal", RSS 2023, arXiv:2305.17110.
+        # Trigger: if training shows the policy oscillating/hovering at the contact
+        # boundary and approach_rew never cleanly hands off to depth_rew.
+        approach_weight = float(np.exp(-200.0 * nail_depth))
+        approach_rew = approach_delta * 50.0 * approach_weight
+
+        # --- Phase 2: impact / depth ---
+        depth_delta = max(0.0, nail_depth - self._max_nail_depth)
+        self._max_nail_depth = max(self._max_nail_depth, nail_depth)
+        depth_rew = depth_delta * 500.0
+
+        # --- Velocity-at-contact bonus ---
+        # Fires exactly once, at the step the nail first starts moving.
+        # Scales with impact speed so the policy learns to swing rather than press.
+        # Without this, mocap-controlled policies tend to discover slow-press solutions
+        # that work in sim but fail on hardware where impact momentum is required.
+        nail_moving = nail_depth > 1e-4
+        if nail_moving and not self._nail_was_moving:
+            head_vel = self._utils.get_site_xvelp(self.model, self.data, self.head_site)
+            impact_bonus = float(np.linalg.norm(head_vel)) * 10.0
+        else:
+            impact_bonus = 0.0
+        self._nail_was_moving = nail_moving
+
+        # --- Completion bonus ---
+        done_bonus = 100.0 if nail_depth >= (self.distance_threshold * 3.75) else 0.0
+
+        # --- Smoothness penalties (discourage jerky motion, help sim-to-real) ---
+        joint_vel_penalty = -float(np.sum(np.abs(self.data.qvel[:6]))) * 0.005
+        # Penalises sudden changes in the commanded action between consecutive steps.
+        # Catches violent reversals that joint-velocity alone misses (RSL-RL pattern).
+        action_rate_penalty = -self._action_rate_sq * 0.5
+
+        return float(approach_rew + depth_rew + impact_bonus + done_bonus + joint_vel_penalty + action_rate_penalty)
 
     def _get_obs(self) -> dict[str, np.ndarray]:
         ee_pos = self._utils.get_site_xpos(self.model, self.data, self.ee_site).copy()
@@ -152,7 +233,14 @@ class Z1HammerEnv(MujocoRobotEnv):
             dtype=np.float64,
         )
 
-        obs = np.concatenate([ee_pos, ee_vel, head_pos, head_vel, nail_pos, nail_depth]).copy()
+        # Scalar distance from hammer head to nail top — makes the approach
+        # phase directly observable so the policy doesn't have to infer it
+        # from the difference of two 3D positions.
+        head_to_nail_dist = np.array(
+            [float(np.linalg.norm(head_pos - nail_pos))], dtype=np.float64
+        )
+
+        obs = np.concatenate([ee_pos, ee_vel, head_pos, head_vel, nail_pos, nail_depth, head_to_nail_dist]).copy()
 
         return {
             "observation": obs,
