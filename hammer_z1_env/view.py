@@ -33,9 +33,9 @@ args = parser.parse_args()
 m = mujoco.MjModel.from_xml_path(XML)
 d = mujoco.MjData(m)
 
-# Same neutral pose as env.py (radians; MuJoCo XML uses `<compiler angle="radian" ...>`).
+# Manually tuned pose from viewer (--no-weld) on 2026-05-27.
 neutral = np.array(
-    [-0.000297861, 1.30495, -1.54711, 0.197456, 0.000311167, 1.57079632679, -0.000964725]
+    [0.000358693, 1.72026, -1.3381, 0.834142, -0.00578292, 1.57008, -0.001]
 )
 arm_joints = [f"joint{i}" for i in range(1, 7)] + ["jointGripper"]
 for name, val in zip(arm_joints, neutral):
@@ -52,7 +52,10 @@ if m.eq_data is not None:
     for i in range(m.eq_data.shape[0]):
         if m.eq_type[i] == mujoco.mjtEq.mjEQ_WELD:
             if args.no_weld:
-                m.eq_active[i] = 0
+                # Both must be cleared: eq_active0 (model default) AND
+                # eq_active (the runtime flag the solver actually reads).
+                m.eq_active0[i] = 0
+                d.eq_active[i] = 0
             else:
                 m.eq_data[i, 3:10] = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
 
@@ -86,4 +89,13 @@ if args.dry_run:
     print(f"nail_top           {d.site_xpos[nail_sid].round(4)}")
     raise SystemExit(0)
 
-mujoco.viewer.launch(m, d)
+if args.no_weld:
+    # Tuning mode: disable gravity so the arm holds the IK pose without sagging.
+    # PD gains in the XML aren't tuned to fight gravity in extended configurations.
+    m.opt.gravity[:] = 0.0
+    with mujoco.viewer.launch_passive(m, d) as viewer:
+        while viewer.is_running():
+            mujoco.mj_step(m, d)
+            viewer.sync()
+else:
+    mujoco.viewer.launch(m, d)
