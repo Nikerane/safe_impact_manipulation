@@ -28,7 +28,7 @@
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
 
     <!-- Wooden block (fixed) -->
-    <body name="block" pos="0.50 0 0.40">
+    <body name="block" pos="0.50 0 0.03">
       <geom name="block_geom"
             type="box"
             size="0.125 0.09 0.03"
@@ -37,7 +37,7 @@
     </body>
 
     <!-- Nail — slides downward into block -->
-    <body name="nail" pos="0.50 0 0.46">
+    <body name="nail" pos="0.50 0 0.09">
       <joint name="nail_slide"
              type="slide"
              axis="0 0 -1"
