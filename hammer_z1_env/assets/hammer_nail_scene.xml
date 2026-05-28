@@ -1,3 +1,7 @@
+<!-- IMPORTANT: block and nail positions here must match nail_block_scene.xml.
+     hammer_nail_scene.xml is the full scene used by view.py (visualisation).
+     nail_block_scene.xml is loaded by mjlab EntityCfg (training).
+     If you change positions in one file, update the other. -->
 <mujoco model="z1 hammer nail scene">
   <compiler angle="radian" meshdir="meshes/" autolimits="true"/>
 

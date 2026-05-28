@@ -26,8 +26,8 @@ robot base (origin)
                     ├── handle   capsule, 22 cm, brown
                     └── head     box 5×2×2.5 cm, grey
 
-block  pos=[0.50, 0, 0.40]   fixed to world
-nail   pos=[0.50, 0, 0.46]   slide joint along -Z, range 0–7.5 cm
+block  pos=[0.50, 0, 0.03]   fixed to world
+nail   pos=[0.50, 0, 0.09]   slide joint along -Z, range 0–7.5 cm
 ```
 
 **nq / nv:** 7 (arm) + 1 (gripper) = 8 DOF  

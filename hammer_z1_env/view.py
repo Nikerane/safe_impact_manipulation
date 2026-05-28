@@ -8,6 +8,7 @@ Usage:
     python hammer_z1_env/view.py --dry-run   (initialize and print key positions)
 
 Tip: Ctrl+A opens actuator sliders. Use --no-weld for manual arm tuning.
+For headless/browser viewing use play.py --viewer viser instead.
 """
 import os
 import argparse
@@ -91,7 +92,6 @@ if args.dry_run:
 
 if args.no_weld:
     # Tuning mode: disable gravity so the arm holds the IK pose without sagging.
-    # PD gains in the XML aren't tuned to fight gravity in extended configurations.
     m.opt.gravity[:] = 0.0
     with mujoco.viewer.launch_passive(m, d) as viewer:
         while viewer.is_running():
