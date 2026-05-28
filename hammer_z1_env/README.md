@@ -1,4 +1,4 @@
-# hammer_z1_env
+it is or ...# hammer_z1_env
 
 Unitree Z1 arm with a rigidly-attached hammer. Task: use RL to drive a nail into a wooden block.
 
@@ -175,6 +175,31 @@ conda run -n unitree_mjlab python -m pytest tests/ -v -m "not integration"
 # Full suite including physics step (~16 s, compiles Warp kernels once)
 conda run -n unitree_mjlab python -m pytest tests/ -v
 ```
+
+---
+
+## Nail-block physics — design decisions
+
+### Why the block and nail shaft are non-colliding
+
+`block_geom`, `nail_shaft`: both have `contype="0" conaffinity="0"`.
+
+**The problem with a solid block:** MuJoCo only supports convex-hull collision detection. A box with a hole through it is non-convex — MuJoCo treats it as a filled solid. The nail shaft (3mm radius) is positioned inside the block at `qpos=0`. With collision enabled, MuJoCo's contact solver sees shaft-inside-box overlap and resolves it by pushing the nail *upward* every timestep. Result: `nail_depth` goes negative from the first step, all reward terms stay permanently at zero.
+
+**Why not a pilot hole?** Modelling a hole as four thin wall geoms (the standard peg-in-hole trick) would work kinematically, but nail-in-wood resistance would then have to come from shaft-wall contact friction with 0.1 mm tolerances — MuJoCo's collision detection is numerically unstable at that scale and produces jitter that breaks training.
+
+**The chosen approach — kinematic nail:** Disable all collision on both the block geom and the nail shaft. The nail can only move via its `slide` joint. Wood resistance is abstracted into two joint parameters:
+
+| Parameter | Value | Role |
+|---|---|---|
+| `frictionloss` | 10 N | Coulomb (dry) friction threshold — nail won't move unless contact force exceeds this |
+| `damping` | 1 N·s/m | Viscous resistance — limits driving speed, prevents free-sliding |
+
+The nail_head (top cap, radius 12mm) keeps collision enabled — this is the only physical contact surface. The hammer head strikes the nail_head; that contact force drives the joint.
+
+**Why block_geom must also be non-colliding:** At `qpos=0.032 m` (3.2 cm driven), the nail_head descends to the block surface. With block collision enabled, the nail_head hits the block top and stops — the nail can never reach the 7.5 cm goal. Making the block non-colliding lets the nail pass through visually while the joint range `[0, 0.075]` sets the physical limit.
+
+**Known artefact — 3.5 mm gravity settling:** At episode reset (`qpos=0`), MuJoCo's constraint solver at the joint lower limit produces a ~3.5 mm downward drift before equilibrating. This is a numerical artefact of the boundary condition, independent of `frictionloss` magnitude. It is stable (nail stops at 3.5 mm, does not keep drifting) and consistent across episodes. The test suite uses a 5 mm tolerance to account for this.
 
 ---
 
