@@ -1,7 +1,9 @@
-<!-- IMPORTANT: block and nail positions here must match nail_block_scene.xml.
+<!-- IMPORTANT: block/nail positions AND nail joint physics (range, damping,
+     frictionloss) here must match nail_block_scene.xml.
      hammer_nail_scene.xml is the full scene used by view.py (visualisation).
      nail_block_scene.xml is loaded by mjlab EntityCfg (training).
-     If you change positions in one file, update the other. -->
+     If you change one file, update the other. (Desync fixed 2026-06-10: this
+     file had stale frictionloss=0.3/damping=8 vs training 10.0/1.) -->
 <mujoco model="z1 hammer nail scene">
   <compiler angle="radian" meshdir="meshes/" autolimits="true"/>
 
@@ -45,9 +47,9 @@
       <joint name="nail_slide"
              type="slide"
              axis="0 0 -1"
-             range="0 0.075"
-             damping="8"
-             frictionloss="0.3"/>
+             range="0 0.032"
+             damping="0.5"
+             frictionloss="30.0"/>
       <geom name="nail_shaft" type="cylinder" pos="0 0 -0.035" size="0.003 0.04"
             mass="0.005" rgba="0.55 0.55 0.55 1"/>
       <geom name="nail_head"  type="cylinder" pos="0 0 0.006"  size="0.012 0.004"
