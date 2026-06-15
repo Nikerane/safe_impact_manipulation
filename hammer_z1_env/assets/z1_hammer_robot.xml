@@ -58,6 +58,14 @@
     <mesh file="z1_GripperMover_col_3.stl"/>
     <mesh file="z1_GripperMover_col_4.stl"/>
     <mesh file="z1_GripperMover_col_5.stl"/>
+    <!-- Real claw hammer (SimToolReal, MIT, (c) Tyler Lum). Visual + 5-piece
+         convex collision decomposition. See meshes/claw_hammer/ATTRIBUTION.txt. -->
+    <mesh name="claw_hammer_vis" file="claw_hammer/claw_hammer.obj"/>
+    <mesh name="claw_hammer_c0" file="claw_hammer/decomp_0.obj"/>
+    <mesh name="claw_hammer_c1" file="claw_hammer/decomp_1.obj"/>
+    <mesh name="claw_hammer_c2" file="claw_hammer/decomp_2.obj"/>
+    <mesh name="claw_hammer_c3" file="claw_hammer/decomp_3.obj"/>
+    <mesh name="claw_hammer_c4" file="claw_hammer/decomp_4.obj"/>
   </asset>
 
   <worldbody>
@@ -123,20 +131,28 @@
                     <site name="ee_center_site" size="0.01" group="3"/>
 
                     <body name="hammer" pos="-0.015 0.0 -0.01">
-                      <geom name="hammer_handle"
-                            type="capsule"
-                            fromto="0 -0.11 0 0 0.11 0"
-                            size="0.012"
-                            mass="0.08"
-                            friction="2.0 0.02 0.002"
-                            rgba="0.55 0.35 0.15 1"/>
-                      <geom name="hammer_head"
-                            type="box"
-                            pos="0 0.13 0"
-                            size="0.05 0.02 0.025"
-                            mass="0.25"
-                            friction="1.5 0.02 0.002"
-                            rgba="0.35 0.35 0.35 1"/>
+                      <!-- Real claw hammer (SimToolReal mesh, MIT) replacing the box+capsule.
+                           quat 0.5 0.5 0.5 0.5 maps mesh +X(handle)->+Y_local (head at far end)
+                           and mesh -Y(FACE)->-Z_local so the flat striking FACE points down (the
+                           +Y forked claw points up). geom pos 0 0.007 0.038 places the face at the
+                           old box-head location (0,0.13,0), so the hand-tuned reset pose + the T1
+                           reference still reach the nail. Contact face = decomp_4 (single solid
+                           piece, named hammer_head_0). Mass overridden head-heavy (~0.5 kg total
+                           vs the mesh's 0.048 kg toy mass); inertia approximate, refine post-calib. -->
+                      <inertial pos="0 0.13 0" mass="0.5" diaginertia="0.0012 0.0004 0.0012"/>
+                      <geom name="hammer_visual" type="mesh" mesh="claw_hammer_vis"
+                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" contype="0" conaffinity="0"
+                            group="2" mass="0" rgba="0.45 0.45 0.48 1"/>
+                      <geom name="hammer_head_0" type="mesh" mesh="claw_hammer_c4"
+                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" mass="0" friction="1.5 0.02 0.002" group="3"/>
+                      <geom name="hammer_neck_col" type="mesh" mesh="claw_hammer_c3"
+                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" mass="0" friction="1.5 0.02 0.002" group="3"/>
+                      <geom name="hammer_claw_0" type="mesh" mesh="claw_hammer_c1"
+                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" mass="0" friction="1.5 0.02 0.002" group="3"/>
+                      <geom name="hammer_claw_1" type="mesh" mesh="claw_hammer_c2"
+                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" mass="0" friction="1.5 0.02 0.002" group="3"/>
+                      <geom name="hammer_handle_col" type="mesh" mesh="claw_hammer_c0"
+                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" mass="0" friction="2.0 0.02 0.002" group="3"/>
                       <site name="hammer_head_site" pos="0 0.13 0" size="0.01" rgba="0 1 0 1"/>
                       <site name="hammer_handle_site" pos="0 0 0" size="0.01" rgba="0 0 1 1"/>
                     </body>
