@@ -42,8 +42,12 @@
             friction="1.5 0.01 0.001"/>
     </body>
 
-    <!-- Nail — slides downward into block -->
-    <body name="nail" pos="0.50 0 0.09">
+    <!-- Nail — slides downward into block.
+         gravcomp="1": cancel the nail's own weight — MuJoCo joint frictionloss
+         does not statically hold it, so without this the nail free-creeps down
+         under gravity (~9.6 mm/s) independent of the hammer. See the longer note
+         in nail_block_scene.xml. (Fix 2026-06-15; keep the two files synced.) -->
+    <body name="nail" pos="0.50 0 0.09" gravcomp="1">
       <joint name="nail_slide"
              type="slide"
              axis="0 0 -1"

@@ -21,8 +21,15 @@
             contype="0" conaffinity="0"/>
     </body>
 
-    <!-- Nail — slides downward into block -->
-    <body name="nail" pos="0.50 0 0.09">
+    <!-- Nail — slides downward into block.
+         gravcomp="1": cancel the nail's own weight. Without it the nail free-
+         creeps downward at ~9.6 mm/s under gravity and self-reaches the success
+         depth in ~3.3 s with no hammer — MuJoCo joint frictionloss does NOT
+         statically hold it (verified: fric 30/300/3000 identical creep; gravity
+         off -> 0). A nail at rest in wood doesn't sink under its own ~7 g; the
+         hammer still drives it via contact impulse, friction/damping still
+         resist the strike. (Fix 2026-06-15; keep synced with hammer_nail_scene.xml.) -->
+    <body name="nail" pos="0.50 0 0.09" gravcomp="1">
       <joint name="nail_slide"
              type="slide"
              axis="0 0 -1"
