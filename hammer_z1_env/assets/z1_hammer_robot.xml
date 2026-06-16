@@ -132,28 +132,47 @@
 
                     <body name="hammer" pos="-0.015 0.0 -0.01">
                       <!-- Real claw hammer (SimToolReal mesh, MIT) replacing the box+capsule.
-                           quat 0.5 0.5 0.5 0.5 maps mesh +X(handle)->+Y_local (head at far end)
-                           and mesh -Y(FACE)->-Z_local so the flat striking FACE points down (the
-                           +Y forked claw points up). geom pos 0 0.007 0.038 places the face at the
-                           old box-head location (0,0.13,0), so the hand-tuned reset pose + the T1
-                           reference still reach the nail. Contact face = decomp_4 (single solid
-                           piece, named hammer_head_0). Mass overridden head-heavy (~0.5 kg total
-                           vs the mesh's 0.048 kg toy mass); inertia approximate, refine post-calib. -->
-                      <inertial pos="0 0.13 0" mass="0.5" diaginertia="0.0012 0.0004 0.0012"/>
+                           GRASP #10 (chosen 2026-06-16 from the 24-orientation sweep,
+                           scripts/diag_sweep_all.py + diag_inspect.py): every hammer geom uses quat
+                           "0.70710678 0 0 0.70710678", which lays the handle out along the gripper axis
+                           and points the flat striking FACE straight DOWN at the nail, forked claw UP.
+                           GRIP POSITION (user pick 2026-06-16, scripts/diag_grip_choice.py): geoms slid
+                           to pos "0 0.006 0" (80 mm along -body-Y from 0 0.086 0) so the gripper clamps
+                           the handle 80 mm closer to the head; head<->gripper clearance stays 72 mm.
+                           COLLISION: faithful SimToolReal 5-piece CoACD decomposition (decomp_0..4),
+                           each a separate convex geom (claw notch stays open). KEY FACT (verified
+                           2026-06-16): MuJoCo already COMPENSATES each mesh's principal-axis reframe in
+                           the compiled geom_pos/quat, so every piece uses the SAME pos/quat as the visual
+                           and auto-aligns at ANY shared quat (collision-union vs visual hull AABB =
+                           0.98 mm at this grasp; scripts/diag_collision_check.py). The old per-piece
+                           pos+quat scheme (compute_hammer_mount.py) double-applied the reframe and was
+                           WRONG. PIECE IDENTITY (verified visually, diag_inspect.py): the striking FACE
+                           is c4 (the rounded poll), the forked CLAW is c1+c2, the neck is c3, shaft is c0
+                           -- the OPPOSITE of the earlier note that called c1+c2 the face. The contact
+                           sensor (pattern hammer_head_.*) must count the FACE, so the head namespace is:
+                             hammer_head_0 = c4 (FACE)   hammer_head_1 = c3 (neck)   -> COUNTED as a strike
+                             hammer_claw_0/1 = c1/c2 (claw)  hammer_handle_col = c0 (shaft) -> EXCLUDED.
+                           At the near-nail reset the FACE LEADS by 56 mm: face 42 mm from the nail vs
+                           claw 98 mm (diag_collision_check.py), so the face contacts first, not the claw.
+                           hammer_head_site (0.0326,0.132,-0.0004) is the c4 FACE centroid = DiffIK frame
+                           + head obs + SingleStrikeReference target, so IK drives the real striking face
+                           onto the nail. (Earlier no-contact bug: the site sat ~12 cm off the mesh on the
+                           old box-head point; fixed here.) Mass 0.5 kg (~0.4 head + 0.1 handle). -->
+                      <inertial pos="0 0.1 0" mass="0.5" diaginertia="0.0012 0.0004 0.0012"/>
                       <geom name="hammer_visual" type="mesh" mesh="claw_hammer_vis"
-                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" contype="0" conaffinity="0"
+                            pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" contype="0" conaffinity="0"
                             group="2" mass="0" rgba="0.45 0.45 0.48 1"/>
                       <geom name="hammer_head_0" type="mesh" mesh="claw_hammer_c4"
-                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" mass="0" friction="1.5 0.02 0.002" group="3"/>
-                      <geom name="hammer_neck_col" type="mesh" mesh="claw_hammer_c3"
-                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" mass="0" friction="1.5 0.02 0.002" group="3"/>
+                            pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" mass="0" friction="1.5 0.02 0.002" group="3"/>
+                      <geom name="hammer_head_1" type="mesh" mesh="claw_hammer_c3"
+                            pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" mass="0" friction="1.5 0.02 0.002" group="3"/>
                       <geom name="hammer_claw_0" type="mesh" mesh="claw_hammer_c1"
-                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" mass="0" friction="1.5 0.02 0.002" group="3"/>
+                            pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" mass="0" friction="1.5 0.02 0.002" group="3"/>
                       <geom name="hammer_claw_1" type="mesh" mesh="claw_hammer_c2"
-                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" mass="0" friction="1.5 0.02 0.002" group="3"/>
+                            pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" mass="0" friction="1.5 0.02 0.002" group="3"/>
                       <geom name="hammer_handle_col" type="mesh" mesh="claw_hammer_c0"
-                            pos="0 0.007 0.038" quat="0.5 0.5 0.5 0.5" mass="0" friction="2.0 0.02 0.002" group="3"/>
-                      <site name="hammer_head_site" pos="0 0.13 0" size="0.01" rgba="0 1 0 1"/>
+                            pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" mass="0" friction="1.5 0.02 0.002" group="3"/>
+                      <site name="hammer_head_site" pos="0.0326 0.132 -0.0004" size="0.01" rgba="0 1 0 1"/>
                       <site name="hammer_handle_site" pos="0 0 0" size="0.01" rgba="0 0 1 1"/>
                     </body>
                   </body>
@@ -181,5 +200,16 @@
       </body>
     </body>
   </worldbody>
+
+  <!-- Self-collision hygiene (audit D1, 2026-06-16): the hammer is rigidly mounted
+       into the link06 wrist subtree and sits right beside the vestigial gripperMover,
+       so any hammer<->arm/gripper contact is a spurious narrowphase candidate, never a
+       real collision. Excluding the pairs stops the solver from wasting work on / ever
+       emitting a phantom contact between the hammer and the limb carrying it. Exclude
+       only removes contacts, so it cannot change the strike dynamics. -->
+  <contact>
+    <exclude body1="hammer" body2="gripperMover"/>
+    <exclude body1="hammer" body2="link06"/>
+  </contact>
 
 </mujoco>
