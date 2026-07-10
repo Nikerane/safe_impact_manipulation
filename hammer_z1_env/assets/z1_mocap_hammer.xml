@@ -62,6 +62,9 @@
     <mesh name="claw_hammer_c2" file="claw_hammer/decomp_2.obj"/>
     <mesh name="claw_hammer_c3" file="claw_hammer/decomp_3.obj"/>
     <mesh name="claw_hammer_c4" file="claw_hammer/decomp_4.obj"/>
+    <!-- Custom 3D-printed L6 hammer holder (try_02 SimplifiedLink06) — keep synced with
+         z1_hammer_robot.xml. mm STL -> scale 0.001. -->
+    <mesh name="l6_hammer_fixture" file="simplified_link06.stl" scale="0.001 0.001 0.001"/>
   </asset>
 
   <worldbody>
@@ -117,25 +120,30 @@
                   <joint name="joint6" axis="1 0 0" range="-2.79253 2.79253"/>
                   <geom class="z1_visual" mesh="z1_Link06"/>
                   <geom size="0.0325 0.0255" pos="0.0255 0 0" quat="1 0 1 0" class="z1_collision"/>
-                  <geom pos="0.051 0 0" type="mesh" mesh="z1_GripperStator" class="z1_visual"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_1"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_2"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_3"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_4"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_5"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_6"/>
-                  <geom class="z1_gripper_stator_pad_collision_1"/>
-                  <geom class="z1_gripper_stator_pad_collision_2"/>
+                  <!-- Unitree gripper STATOR meshes removed: the custom L6 hammer holder
+                       replaces the gripper. jointGripper + its actuator + the gripperMover
+                       INERTIAL are KEPT (see gripperMover below) so nq / obs / actuators are
+                       unchanged. Mirrors z1_hammer_robot.xml (2026-07-06). -->
 
-                  <!-- Tool center: at the gripper's circular hole between the body and the pads.
-                       Handle threads through along link06 Y; gripper mover closes around it. -->
+                  <!-- Custom 3D-printed L6 hammer holder (try_02 SimplifiedLink06), visual-only,
+                       rigidly fixed to link06. VIEWER COPY — keep pos/quat byte-identical to
+                       z1_hammer_robot.xml. Orientation A (socket->+X), NO roll (2026-07-06). -->
+                  <body name="l6_hammer_fixture" pos="0.014 0 0" quat="0.70710678 0 0 -0.70710678">
+                    <geom name="l6_fixture_visual" class="z1_visual" mesh="l6_hammer_fixture"
+                          rgba="0.20 0.55 0.90 1" mass="0.045"/>
+                  </body>
+
+                  <!-- Tool center: at the holder bore. Handle threads through along link06 Y. -->
                   <body name="ee_center_body" pos="0.15 0 0">
                     <site name="ee_center_site" size="0.01" group="3"/>
 
-                    <!-- Rigid baseline: hammer is mounted through the gripper opening.
-                         The mesh handle runs along body +Z; the head sits on the +Z end,
-                         its flat striking FACE pointing body +X (~world-down at reset). -->
-                    <body name="hammer" pos="-0.015 0.0 -0.01">
+                    <!-- Rigid baseline: hammer handle seated coaxially in the L6 holder bore.
+                         VIEWER COPY — keep pos/quat byte-identical to z1_hammer_robot.xml.
+                         MOUNT UPDATE (2026-07-06): body rotated -90 deg about Z (handle coaxial
+                         with the bore) + slid so the handle butt seats +9 mm into the collar
+                         (pos.x -0.015 0.0 -0.01 -> -0.0506 0.001 0.0). NEAR_NAIL/reference are
+                         stale after this grasp change (see z1_hammer_robot.xml for details). -->
+                    <body name="hammer" pos="-0.0506 0.001 0.0" quat="0.70710678 0 0 -0.70710678">
                       <!-- Real claw hammer (SimToolReal mesh, MIT). VIEWER COPY -- keep byte-identical
                            to z1_hammer_robot.xml's hammer body. GRASP #10: every hammer geom at quat
                            "0.70710678 0 0 0.70710678" (handle out along the gripper axis, flat striking
@@ -153,7 +161,7 @@
                            no-contact bug (was ~12 cm off the mesh on the old box-head point).
                            GRIP: geoms slid to pos "0 0.006 0" (80 mm along -body-Y) so the gripper holds
                            the handle 80 mm closer to the head (user pick 2026-06-16). -->
-                      <inertial pos="0 0.1 0" mass="0.5" diaginertia="0.0012 0.0004 0.0012"/>
+                      <inertial pos="0 0.1 0" mass="0.2" diaginertia="0.00048 0.00016 0.00048"/>
                       <geom name="hammer_visual" type="mesh" mesh="claw_hammer_vis"
                             pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" contype="0" conaffinity="0"
                             group="2" mass="0" rgba="0.45 0.45 0.48 1"/>
@@ -178,14 +186,9 @@
                               mass="0.276213"
                               diaginertia="0.000359044 0.000270888 0.000172378"/>
                     <joint name="jointGripper" axis="0 1 0" range="-1.51844 0"/>
-                    <geom type="mesh" mesh="z1_GripperMover" class="z1_visual"/>
-                    <geom class="z1_gripper_mover_collision" mesh="z1_GripperMover_col_1"/>
-                    <geom class="z1_gripper_mover_collision" mesh="z1_GripperMover_col_2"/>
-                    <geom class="z1_gripper_mover_collision" mesh="z1_GripperMover_col_3"/>
-                    <geom class="z1_gripper_mover_collision" mesh="z1_GripperMover_col_4"/>
-                    <geom class="z1_gripper_mover_collision" mesh="z1_GripperMover_col_5"/>
-                    <geom class="z1_gripper_mover_pad_collision_1"/>
-                    <geom class="z1_gripper_mover_pad_collision_2"/>
+                    <!-- Gripper MOVER meshes removed (L6 holder is the hammer holder now).
+                         Body + jointGripper + this inertial KEPT so the vestigial DoF, its
+                         actuator (motorGripper) and nq are unchanged. Mirrors z1_hammer_robot.xml. -->
                   </body>
                 </body>
               </body>

@@ -1,10 +1,10 @@
-it is or ...# hammer_z1_env
+# hammer_z1_env
 
 Unitree Z1 arm with a rigidly-attached hammer. Task: use RL to drive a nail into a wooden block.
 
 This is the **Z1 variant** of `hammer_env` (Franka Panda). Assets live here; mjlab training is in
 [`unitree_rl_mjlab`](https://github.com/Nikerane/unitree_rl_mjlab) (`hammer-z1` branch), task
-**`Unitree-Z1-Hammer`**. Docs: `unitree_rl_mjlab/docs/BASELINE_AUDIT.md`,
+**`Unitree-Z1-Hammer`**. Docs: `unitree_rl_mjlab/docs/README.md` (current-truth index),
 `docs/research/reward-design/`.
 
 ```bash

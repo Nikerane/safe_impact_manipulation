@@ -66,6 +66,13 @@
     <mesh name="claw_hammer_c2" file="claw_hammer/decomp_2.obj"/>
     <mesh name="claw_hammer_c3" file="claw_hammer/decomp_3.obj"/>
     <mesh name="claw_hammer_c4" file="claw_hammer/decomp_4.obj"/>
+    <!-- Custom 3D-printed L6 hammer holder (real-rig bracket; mm STL -> scale 0.001).
+         try_02 "SimplifiedLink06" holder (2026-07-05) replacing the try_01 clamshell.
+         SAME link06 connector frame (X/Z +-32.5 mm, socket base at Y=30 mm) -> the mount
+         pos/quat carry over unchanged; the new socket is just longer (Y extends to 89 mm
+         vs 81 mm). Mesh NAME kept stable (l6_hammer_fixture) so the body + geom mesh refs
+         below are untouched; only the file= points at the new STL. -->
+    <mesh name="l6_hammer_fixture" file="simplified_link06.stl" scale="0.001 0.001 0.001"/>
   </asset>
 
   <worldbody>
@@ -117,20 +124,43 @@
                   <joint name="joint6" axis="1 0 0" range="-2.79253 2.79253"/>
                   <geom class="z1_visual" mesh="z1_Link06"/>
                   <geom size="0.0325 0.0255" pos="0.0255 0 0" quat="1 0 1 0" class="z1_collision"/>
-                  <geom pos="0.051 0 0" type="mesh" mesh="z1_GripperStator" class="z1_visual"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_1"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_2"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_3"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_4"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_5"/>
-                  <geom class="z1_gripper_stator_collision" mesh="z1_GripperStator_col_6"/>
-                  <geom class="z1_gripper_stator_pad_collision_1"/>
-                  <geom class="z1_gripper_stator_pad_collision_2"/>
+                  <!-- Unitree gripper STATOR meshes (visual + collision) removed: the custom L6
+                       hammer fixture replaces the gripper as the hammer holder. The jointGripper
+                       joint + actuator + the gripperMover INERTIAL are KEPT (see gripperMover below),
+                       so sim DoF / obs / reset poses / keyframes / tests are unchanged -- only the
+                       gripper geometry is dropped. (Asset + default-class defs left in place, unused.) -->
+
+                  <!-- Custom 3D-printed L6 hammer fixture (real-rig bracket replacing the Unitree
+                       gripper). Rigidly fixed to link06 (no joint), so it is one rigid EE welded with
+                       the hammer: the chain link06 -> fixture -> hammer holds whether the holder is
+                       nested or a sibling (no joint between them). MOUNT TRANSFORM IS A FIRST PASS,
+                       tuned visually via render. mass ~45 g (PLA, ~36 cm^3); gravcomp applied to every
+                       body in get_spec(), so this body gets it too. -->
+                  <!-- Orientation: A (socket axis -> link06 +X), NO roll (2026-07-06). The try_02
+                       SimplifiedLink06 bore is already aligned to the handle at roll 0, so the old
+                       122.5deg mount-axis roll (try_01 clamshell) is dropped. quat = Rz(-90deg);
+                       old value was Rx(122.5deg) . Rz(-90deg) = 0.34011042 0.61993943 0.61993943 -0.34011042.
+                       pos seats the flange flush on the link06 tool flange. -->
+                  <body name="l6_hammer_fixture" pos="0.014 0 0" quat="0.70710678 0 0 -0.70710678">
+                    <geom name="l6_fixture_visual" class="z1_visual" mesh="l6_hammer_fixture"
+                          rgba="0.20 0.55 0.90 1" mass="0.045"/>
+                  </body>
 
                   <body name="ee_center_body" pos="0.15 0 0">
                     <site name="ee_center_site" size="0.01" group="3"/>
 
-                    <body name="hammer" pos="-0.015 0.0 -0.01">
+                    <body name="hammer" pos="-0.0506 0.001 0.0" quat="0.70710678 0 0 -0.70710678">
+                      <!-- MOUNT UPDATE (2026-07-06, user): hammer body rotated -90 deg about Z
+                           (quat above) so the HANDLE is coaxial with the L6 holder bore, then slid
+                           along the socket axis so the handle BUTT seats +9 mm into the collar
+                           (butt world X ~= 0.040; body pos.x -0.073 -> -0.0506). A visual-only
+                           ~1.8 mm radial handle/bore overlap is accepted (holder has no collision
+                           geom, so zero physics effect; the SimToolReal handle is slightly fatter
+                           than the printed bore). *** hammer_head_site moves a long way -> NEAR_NAIL
+                           and the strike reference are STALE and must be re-solved before any
+                           training/eval. *** The geom-frame facts below (GRASP #10 piece identity,
+                           contact-sensor namespace) are unchanged; their world-direction claims
+                           predate this body rotation. -->
                       <!-- Real claw hammer (SimToolReal mesh, MIT) replacing the box+capsule.
                            GRASP #10 (chosen 2026-06-16 from the 24-orientation sweep,
                            scripts/diag_sweep_all.py + diag_inspect.py): every hammer geom uses quat
@@ -157,8 +187,10 @@
                            hammer_head_site (0.0326,0.132,-0.0004) is the c4 FACE centroid = DiffIK frame
                            + head obs + SingleStrikeReference target, so IK drives the real striking face
                            onto the nail. (Earlier no-contact bug: the site sat ~12 cm off the mesh on the
-                           old box-head point; fixed here.) Mass 0.5 kg (~0.4 head + 0.1 handle). -->
-                      <inertial pos="0 0.1 0" mass="0.5" diaginertia="0.0012 0.0004 0.0012"/>
+                           old box-head point; fixed here.) Mass 0.2 kg (2026-07-06: real hammer HEAD is
+                           200 g; head-dominated, handle light). Inertia scaled from the old 0.5 kg value
+                           by the mass ratio (approx); refine from measured hammer props if needed. -->
+                      <inertial pos="0 0.1 0" mass="0.2" diaginertia="0.00048 0.00016 0.00048"/>
                       <geom name="hammer_visual" type="mesh" mesh="claw_hammer_vis"
                             pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" contype="0" conaffinity="0"
                             group="2" mass="0" rgba="0.45 0.45 0.48 1"/>
@@ -183,14 +215,10 @@
                               mass="0.276213"
                               diaginertia="0.000359044 0.000270888 0.000172378"/>
                     <joint name="jointGripper" axis="0 1 0" range="-1.51844 0"/>
-                    <geom type="mesh" mesh="z1_GripperMover" class="z1_visual"/>
-                    <geom class="z1_gripper_mover_collision" mesh="z1_GripperMover_col_1"/>
-                    <geom class="z1_gripper_mover_collision" mesh="z1_GripperMover_col_2"/>
-                    <geom class="z1_gripper_mover_collision" mesh="z1_GripperMover_col_3"/>
-                    <geom class="z1_gripper_mover_collision" mesh="z1_GripperMover_col_4"/>
-                    <geom class="z1_gripper_mover_collision" mesh="z1_GripperMover_col_5"/>
-                    <geom class="z1_gripper_mover_pad_collision_1"/>
-                    <geom class="z1_gripper_mover_pad_collision_2"/>
+                    <!-- Gripper MOVER meshes (visual + collision) removed (custom L6 fixture is now
+                         the hammer holder). The body + jointGripper + this inertial are KEPT so the
+                         vestigial DoF, its actuator, obs, reset poses, keyframes and tests are all
+                         unchanged; only the gripper geometry is gone. -->
                   </body>
                 </body>
               </body>

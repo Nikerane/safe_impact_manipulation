@@ -50,3 +50,8 @@ checkpoints/
 *.pth
 *.ckpt
 *.pkl
+
+# Tooling artifacts & secrets
+graphify-out/
+paperbanana_work/
+.env

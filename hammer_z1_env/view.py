@@ -34,9 +34,13 @@ args = parser.parse_args()
 m = mujoco.MjModel.from_xml_path(XML)
 d = mujoco.MjData(m)
 
-# Manually tuned pose from viewer (--no-weld) on 2026-05-27.
+# In-plane NEAR_NAIL pose — RE-SOLVED 2026-07-06 for the new grasp (SimplifiedLink06 holder;
+# hammer body -90 deg about Z, coaxial handle). Poised ~15 cm above the on-floor nail, in-plane and
+# dead-vertical; the policy strikes DOWN from here. Kept in sync with NEAR_NAIL_JOINT_POS in
+# unitree_rl_mjlab z1_constants.py. (Old grasp pose: 0.0 1.99068114 -1.79578707 1.37590226
+# -0.00003641 1.64860944 -0.001.)
 neutral = np.array(
-    [0.000358693, 1.72026, -1.3381, 0.834142, -0.00578292, 1.57008, -0.001]
+    [0.0, 1.606, -0.4301, -1.1976, -0.0013, 1.5544, -0.001]
 )
 arm_joints = [f"joint{i}" for i in range(1, 7)] + ["jointGripper"]
 for name, val in zip(arm_joints, neutral):
