@@ -194,13 +194,20 @@
                       <geom name="hammer_visual" type="mesh" mesh="claw_hammer_vis"
                             pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" contype="0" conaffinity="0"
                             group="2" mass="0" rgba="0.45 0.45 0.48 1"/>
-                      <geom name="hammer_head_0" type="mesh" mesh="claw_hammer_c4"
+                      <!-- COLLISION-ONLY FIX (2026-07-14, user): keep the visual mesh + the HEAD
+                           collision meshes UNCHANGED (so strike dynamics / i_ref / m_eff are preserved,
+                           no re-derivation), but make the head the ONLY thing that can drive the nail.
+                           The old 5-piece collision let the forked claw (c1/c2) drive the nail to full
+                           depth with NO head-sensor contact -> the "claw-drive" reward-hack the Lightning
+                           smoke surfaced. Fix: (a) DELETE the two claw collision geoms (c1/c2) -- the real
+                           hammer has no claw; (b) put nail_head on a dedicated collision channel (bit 2,
+                           nail_block_scene.xml) that ONLY the head geoms share via contype/conaffinity=3
+                           (world bit 1 + nail bit 2). The shaft (c0) keeps the default world channel
+                           (bit 1 only) -- it collides with the world but, lacking bit 2, can never touch
+                           the nail. The claw is still drawn by the visual mesh but is now a physics ghost. -->
+                      <geom name="hammer_head_0" type="mesh" mesh="claw_hammer_c4" contype="3" conaffinity="3"
                             pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" mass="0" friction="1.5 0.02 0.002" group="3"/>
-                      <geom name="hammer_head_1" type="mesh" mesh="claw_hammer_c3"
-                            pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" mass="0" friction="1.5 0.02 0.002" group="3"/>
-                      <geom name="hammer_claw_0" type="mesh" mesh="claw_hammer_c1"
-                            pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" mass="0" friction="1.5 0.02 0.002" group="3"/>
-                      <geom name="hammer_claw_1" type="mesh" mesh="claw_hammer_c2"
+                      <geom name="hammer_head_1" type="mesh" mesh="claw_hammer_c3" contype="3" conaffinity="3"
                             pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" mass="0" friction="1.5 0.02 0.002" group="3"/>
                       <geom name="hammer_handle_col" type="mesh" mesh="claw_hammer_c0"
                             pos="0 0.006 0" quat="0.70710678 0 0 0.70710678" mass="0" friction="1.5 0.02 0.002" group="3"/>
